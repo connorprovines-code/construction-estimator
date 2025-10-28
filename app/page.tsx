@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
+import ReactMarkdown from 'react-markdown'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -24,6 +25,15 @@ export default function Home() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Enter (without Shift)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage(e)
+    }
+    // Allow Shift+Enter for line breaks (default behavior)
+  }
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -146,9 +156,15 @@ export default function Home() {
                         : 'bg-white text-slate-800 shadow-md border border-slate-200'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                      {message.content}
-                    </p>
+                    {message.role === 'assistant' ? (
+                      <div className="text-sm prose prose-sm max-w-none prose-slate prose-headings:text-slate-800 prose-p:text-slate-700 prose-strong:text-slate-900 prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-100 prose-pre:text-slate-800">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                        {message.content}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -173,18 +189,19 @@ export default function Home() {
       <div className="bg-white border-t border-slate-200 shadow-lg">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <form onSubmit={sendMessage} className="flex gap-3">
-            <input
-              type="text"
+            <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Describe your construction project..."
+              onKeyDown={handleKeyDown}
+              placeholder="Describe your construction project... (Shift+Enter for new line)"
               disabled={isLoading || !sessionId}
-              className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed text-slate-800 placeholder-slate-400"
+              rows={1}
+              className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed text-slate-800 placeholder-slate-400 resize-none min-h-[48px] max-h-[200px] overflow-y-auto"
             />
             <button
               type="submit"
               disabled={isLoading || !inputValue.trim() || !sessionId}
-              className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors self-end"
             >
               {isLoading ? (
                 <svg
