@@ -42,17 +42,27 @@ export async function sendChatMessage(formData: FormData) {
       callbackUrl,
     }
 
-    // Forward the request to n8n webhook with JSON payload (fire and forget)
+    // Forward the request to n8n webhook (don't wait for response, but ensure it's sent)
     console.log('Sending request to webhook:', PDF_WEBHOOK_URL, webhookPayload)
-    fetch(PDF_WEBHOOK_URL, {
+
+    // Use Promise.resolve to ensure the fetch actually gets initiated
+    const n8nRequest = fetch(PDF_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(webhookPayload),
+    }).then(() => {
+      console.log('Request sent to n8n successfully')
     }).catch(error => {
       console.error('Error sending to n8n:', error)
     })
+
+    // Wait briefly to ensure the request is sent before returning
+    await Promise.race([
+      n8nRequest,
+      new Promise(resolve => setTimeout(resolve, 100)) // Max 100ms wait
+    ])
 
     // Return immediately with jobId
     return {
