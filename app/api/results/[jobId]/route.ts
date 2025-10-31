@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { jobResults } from '../../webhook-callback/route'
+import { jobResults } from '@/lib/job-store'
 
 export async function GET(
   request: Request,
