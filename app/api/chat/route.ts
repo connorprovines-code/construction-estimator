@@ -30,7 +30,10 @@ export async function POST(request: NextRequest) {
     webhookFormData.append('sessionId', sessionId)
 
     if (pdfFile) {
-      webhookFormData.append('pdf', pdfFile)
+      // Convert File to Blob with proper metadata for serverless compatibility
+      const pdfBuffer = await pdfFile.arrayBuffer()
+      const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' })
+      webhookFormData.append('pdf', pdfBlob, pdfFile.name)
     }
 
     // Forward the request to n8n PDF webhook
