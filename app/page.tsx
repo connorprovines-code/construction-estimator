@@ -73,14 +73,11 @@ export default function Home() {
       // Upload PDF directly to Vercel Blob from client (bypasses serverless limits)
       if (selectedPDF) {
         try {
-          const blob = await upload(selectedPDF.name, selectedPDF, {
+          const newBlob = await upload(selectedPDF.name, selectedPDF, {
             access: 'public',
             handleUploadUrl: '/api/upload',
-            options: {
-              allowOverwrite: true,
-            },
           })
-          pdfUrl = blob.url
+          pdfUrl = newBlob.url
           console.log('PDF uploaded to Blob:', pdfUrl)
         } catch (uploadError) {
           console.error('Error uploading PDF:', uploadError)

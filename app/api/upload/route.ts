@@ -13,6 +13,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         return {
           allowedContentTypes: ['application/pdf'],
           tokenPayload: JSON.stringify({}),
+          allowOverwrite: true,
         }
       },
       onUploadCompleted: async ({ blob }) => {
