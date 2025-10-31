@@ -14,7 +14,9 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedPDF, setSelectedPDF] = useState<File | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Generate session ID on mount
   useEffect(() => {
@@ -35,12 +37,28 @@ export default function Home() {
     // Allow Shift+Enter for line breaks (default behavior)
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && file.type === 'application/pdf') {
+      setSelectedPDF(file)
+    } else if (file) {
+      alert('Please select a PDF file')
+    }
+  }
+
+  const handleRemovePDF = () => {
+    setSelectedPDF(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!inputValue.trim() || isLoading || !sessionId) return
+    if ((!inputValue.trim() && !selectedPDF) || isLoading || !sessionId) return
 
-    const userMessage = inputValue.trim()
+    const userMessage = inputValue.trim() || (selectedPDF ? `Uploaded PDF: ${selectedPDF.name}` : '')
     setInputValue('')
     setIsLoading(true)
 
@@ -48,15 +66,17 @@ export default function Home() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
 
     try {
+      const formData = new FormData()
+      formData.append('message', userMessage)
+      formData.append('sessionId', sessionId)
+
+      if (selectedPDF) {
+        formData.append('pdf', selectedPDF)
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userMessage,
-          sessionId: sessionId,
-        }),
+        body: formData,
       })
 
       if (!response.ok) {
@@ -77,6 +97,10 @@ export default function Home() {
       ])
     } finally {
       setIsLoading(false)
+      setSelectedPDF(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -188,7 +212,45 @@ export default function Home() {
       {/* Input Area */}
       <div className="bg-white border-t border-slate-200 shadow-lg">
         <div className="max-w-4xl mx-auto px-4 py-4">
+          {/* PDF Preview */}
+          {selectedPDF && (
+            <div className="mb-3 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              <svg className="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span className="text-sm text-blue-800 flex-1 truncate">{selectedPDF.name}</span>
+              <button
+                type="button"
+                onClick={handleRemovePDF}
+                className="text-blue-600 hover:text-blue-800 focus:outline-none"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           <form onSubmit={sendMessage} className="flex gap-3">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".pdf"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || !sessionId}
+              className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:bg-slate-100 disabled:cursor-not-allowed transition-colors self-end flex items-center gap-2"
+              title="Upload PDF"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+              <span className="hidden sm:inline">PDF</span>
+            </button>
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -200,7 +262,7 @@ export default function Home() {
             />
             <button
               type="submit"
-              disabled={isLoading || !inputValue.trim() || !sessionId}
+              disabled={isLoading || (!inputValue.trim() && !selectedPDF) || !sessionId}
               className="px-6 py-3 bg-primary text-white rounded-xl font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors self-end"
             >
               {isLoading ? (

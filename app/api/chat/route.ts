@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const PDF_WEBHOOK_URL = 'https://connorprovines.app.n8n.cloud/webhook/construction-estimator-pdf'
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { message, sessionId } = body
+    const formData = await request.formData()
+    const message = formData.get('message') as string
+    const sessionId = formData.get('sessionId') as string
+    const pdfFile = formData.get('pdf') as File | null
 
     // Validate inputs
     if (!message || typeof message !== 'string') {
@@ -20,27 +24,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get n8n webhook URL from environment variables
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL
+    // Create form data for n8n webhook
+    const webhookFormData = new FormData()
+    webhookFormData.append('message', message)
+    webhookFormData.append('sessionId', sessionId)
 
-    if (!n8nWebhookUrl) {
-      console.error('N8N_WEBHOOK_URL is not configured')
-      return NextResponse.json(
-        { error: 'Service configuration error' },
-        { status: 500 }
-      )
+    if (pdfFile) {
+      webhookFormData.append('pdf', pdfFile)
     }
 
-    // Forward the request to n8n webhook
-    const n8nResponse = await fetch(n8nWebhookUrl, {
+    // Forward the request to n8n PDF webhook
+    const n8nResponse = await fetch(PDF_WEBHOOK_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        sessionId,
-      }),
+      body: webhookFormData,
     })
 
     if (!n8nResponse.ok) {
