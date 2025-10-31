@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const PDF_WEBHOOK_URL = 'https://connorprovines.app.n8n.cloud/webhook/construction-estimator-pdf'
 
-// Increase max duration for serverless function (Vercel Pro: up to 60s)
-export const maxDuration = 60
+// Route segment config for Vercel Pro
+export const maxDuration = 60 // 60 seconds timeout
+export const dynamic = 'force-dynamic' // Disable static optimization
+// Note: Body size limits are configured in vercel.json
 
 export async function POST(request: NextRequest) {
   try {

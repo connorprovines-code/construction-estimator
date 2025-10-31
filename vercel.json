@@ -5,8 +5,9 @@
   "framework": "nextjs",
   "outputDirectory": ".next",
   "functions": {
-    "app/api/chat/route.ts": {
-      "maxDuration": 60
+    "app/api/**/*.ts": {
+      "maxDuration": 60,
+      "memory": 1024
     }
   }
 }
