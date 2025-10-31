@@ -44,23 +44,37 @@ export async function sendChatMessage(formData: FormData) {
       const errorText = await n8nResponse.text()
       console.error('n8n webhook returned error:', n8nResponse.status, errorText)
       return {
-        error: 'Failed to process message',
+        error: `Failed to process message: ${n8nResponse.status}`,
         details: errorText,
         response: null,
       }
     }
 
-    const n8nData = await n8nResponse.json()
+    // Try to parse JSON response
+    let n8nData
+    try {
+      const responseText = await n8nResponse.text()
+      console.log('n8n response:', responseText)
+      n8nData = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error('Failed to parse n8n response:', parseError)
+      return {
+        error: 'Invalid response from webhook',
+        response: null,
+      }
+    }
 
     // Return the response from n8n
     return {
       error: null,
-      response: n8nData.response || n8nData.message || 'No response from assistant',
+      response: n8nData.response || n8nData.message || n8nData.output || 'No response from assistant',
     }
   } catch (error) {
     console.error('Error in chat action:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error details:', errorMessage)
     return {
-      error: 'Internal server error',
+      error: `Internal server error: ${errorMessage}`,
       response: null,
     }
   }
