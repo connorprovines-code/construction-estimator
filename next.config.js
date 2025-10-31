@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Increase body size limit for PDF uploads (default is 4.5MB)
-  // Vercel allows up to 4.5MB for Hobby plan, 100MB for Pro
+  // Increase body size limit for PDF uploads
+  // Vercel Pro allows up to 100MB
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      bodySizeLimit: '50mb',
     },
   },
 }
