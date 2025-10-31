@@ -108,10 +108,16 @@ export default function Home() {
       setMessages(prev => [...prev, { role: 'assistant', content: '⏳ Processing your request...' }])
 
       // Poll for results
+      let pollCount = 0
+      const maxPolls = 200 // 200 * 3 seconds = 10 minutes
       const pollInterval = setInterval(async () => {
         try {
+          pollCount++
+          console.log(`Polling for results (attempt ${pollCount}):`, data.jobId)
+
           const response = await fetch(`/api/results/${data.jobId}`)
           const result = await response.json()
+          console.log('Poll result:', result)
 
           if (result.status === 'completed') {
             clearInterval(pollInterval)
@@ -136,20 +142,34 @@ export default function Home() {
               return updated
             })
             setIsLoading(false)
+          } else if (pollCount >= maxPolls) {
+            // Timeout after max polls
+            clearInterval(pollInterval)
+            setMessages(prev => {
+              const updated = [...prev]
+              updated[processingMessageIndex] = {
+                role: 'assistant',
+                content: 'Request timed out. Please try again.'
+              }
+              return updated
+            })
+            setIsLoading(false)
           }
           // If status is 'processing', continue polling
         } catch (pollError) {
           console.error('Error polling for results:', pollError)
           clearInterval(pollInterval)
+          setMessages(prev => {
+            const updated = [...prev]
+            updated[processingMessageIndex] = {
+              role: 'assistant',
+              content: 'Error checking results. Please try again.'
+            }
+            return updated
+          })
           setIsLoading(false)
         }
       }, 3000) // Poll every 3 seconds
-
-      // Timeout after 10 minutes
-      setTimeout(() => {
-        clearInterval(pollInterval)
-        setIsLoading(false)
-      }, 10 * 60 * 1000)
     } catch (error) {
       console.error('Error sending message:', error)
       setMessages(prev => [
