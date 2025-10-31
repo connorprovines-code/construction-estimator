@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import ReactMarkdown from 'react-markdown'
+import { upload } from '@vercel/blob/client'
 import { sendChatMessage } from './actions/chat'
 
 interface Message {
@@ -69,20 +70,14 @@ export default function Home() {
     try {
       let pdfUrl: string | null = null
 
-      // Upload PDF directly to Vercel Blob from client
+      // Upload PDF directly to Vercel Blob from client (bypasses serverless limits)
       if (selectedPDF) {
         try {
-          const uploadResponse = await fetch(`/api/upload?filename=${encodeURIComponent(selectedPDF.name)}`, {
-            method: 'POST',
-            body: selectedPDF,
+          const blob = await upload(selectedPDF.name, selectedPDF, {
+            access: 'public',
+            handleUploadUrl: '/api/upload',
           })
-
-          if (!uploadResponse.ok) {
-            throw new Error('Failed to upload PDF')
-          }
-
-          const uploadData = await uploadResponse.json()
-          pdfUrl = uploadData.url
+          pdfUrl = blob.url
           console.log('PDF uploaded to Blob:', pdfUrl)
         } catch (uploadError) {
           console.error('Error uploading PDF:', uploadError)

@@ -1,28 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { put } from '@vercel/blob'
+import { NextResponse } from 'next/server'
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request): Promise<NextResponse> {
+  const body = (await request.json()) as HandleUploadBody
+
   try {
-    const { searchParams } = new URL(request.url)
-    const filename = searchParams.get('filename')
-
-    if (!filename) {
-      return NextResponse.json({ error: 'Filename is required' }, { status: 400 })
-    }
-
-    if (!request.body) {
-      return NextResponse.json({ error: 'Request body is required' }, { status: 400 })
-    }
-
-    // Upload to Vercel Blob
-    const blob = await put(filename, request.body, {
-      access: 'public',
-      addRandomSuffix: true,
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => {
+        // You can add authentication here if needed
+        return {
+          allowedContentTypes: ['application/pdf'],
+          tokenPayload: JSON.stringify({}),
+        }
+      },
+      onUploadCompleted: async ({ blob }) => {
+        console.log('Upload completed:', blob.url)
+      },
     })
 
-    return NextResponse.json({ url: blob.url })
+    return NextResponse.json(jsonResponse)
   } catch (error) {
-    console.error('Error uploading to Blob:', error)
-    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
+    console.error('Error handling upload:', error)
+    return NextResponse.json({ error: 'Upload failed' }, { status: 400 })
   }
 }
