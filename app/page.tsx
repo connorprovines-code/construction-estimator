@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import ReactMarkdown from 'react-markdown'
+import { sendChatMessage } from './actions/chat'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -74,16 +75,12 @@ export default function Home() {
         formData.append('pdf', selectedPDF)
       }
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        body: formData,
-      })
+      // Use Server Action instead of API route
+      const data = await sendChatMessage(formData)
 
-      if (!response.ok) {
-        throw new Error('Failed to send message')
+      if (data.error) {
+        throw new Error(data.error)
       }
-
-      const data = await response.json()
 
       // Add assistant response to chat
       if (data.response) {
