@@ -1,14 +1,12 @@
 'use server'
 
-import { put } from '@vercel/blob'
-
 const PDF_WEBHOOK_URL = 'https://connorprovines.app.n8n.cloud/webhook/construction-estimator-pdf'
 
 export async function sendChatMessage(formData: FormData) {
   try {
     const message = formData.get('message') as string
     const sessionId = formData.get('sessionId') as string
-    const pdfFile = formData.get('pdf') as File | null
+    const pdfUrl = formData.get('pdfUrl') as string | null
 
     // Validate inputs
     if (!message || typeof message !== 'string') {
@@ -25,29 +23,7 @@ export async function sendChatMessage(formData: FormData) {
       }
     }
 
-    let pdfUrl: string | null = null
-
-    // Upload PDF to Vercel Blob if present
-    if (pdfFile) {
-      console.log('Uploading PDF file:', pdfFile.name, 'Size:', pdfFile.size, 'bytes')
-
-      try {
-        const blob = await put(pdfFile.name, pdfFile, {
-          access: 'public',
-          addRandomSuffix: true,
-        })
-        pdfUrl = blob.url
-        console.log('PDF uploaded to Blob:', pdfUrl)
-      } catch (uploadError) {
-        console.error('Error uploading PDF to Blob:', uploadError)
-        return {
-          error: 'Failed to upload PDF',
-          response: null,
-        }
-      }
-    }
-
-    // Send message and PDF URL to n8n webhook (not the actual file)
+    // Send message and PDF URL to n8n webhook (PDF already uploaded to Blob by client)
     const webhookPayload = {
       message,
       sessionId,

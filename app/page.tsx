@@ -67,15 +67,37 @@ export default function Home() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
 
     try {
+      let pdfUrl: string | null = null
+
+      // Upload PDF directly to Vercel Blob from client
+      if (selectedPDF) {
+        try {
+          const uploadResponse = await fetch(`/api/upload?filename=${encodeURIComponent(selectedPDF.name)}`, {
+            method: 'POST',
+            body: selectedPDF,
+          })
+
+          if (!uploadResponse.ok) {
+            throw new Error('Failed to upload PDF')
+          }
+
+          const uploadData = await uploadResponse.json()
+          pdfUrl = uploadData.url
+          console.log('PDF uploaded to Blob:', pdfUrl)
+        } catch (uploadError) {
+          console.error('Error uploading PDF:', uploadError)
+          throw new Error('Failed to upload PDF')
+        }
+      }
+
       const formData = new FormData()
       formData.append('message', userMessage)
       formData.append('sessionId', sessionId)
-
-      if (selectedPDF) {
-        formData.append('pdf', selectedPDF)
+      if (pdfUrl) {
+        formData.append('pdfUrl', pdfUrl)
       }
 
-      // Use Server Action instead of API route
+      // Use Server Action with PDF URL (not the file itself)
       const data = await sendChatMessage(formData)
 
       if (data.error) {
