@@ -1,5 +1,7 @@
 'use server'
 
+import { put } from '@vercel/blob'
+
 const PDF_WEBHOOK_URL = 'https://connorprovines.app.n8n.cloud/webhook/construction-estimator-pdf'
 
 export async function sendChatMessage(formData: FormData) {
@@ -23,25 +25,43 @@ export async function sendChatMessage(formData: FormData) {
       }
     }
 
-    // Create form data for n8n webhook
-    const webhookFormData = new FormData()
-    webhookFormData.append('message', message)
-    webhookFormData.append('sessionId', sessionId)
+    let pdfUrl: string | null = null
 
+    // Upload PDF to Vercel Blob if present
     if (pdfFile) {
-      console.log('Processing PDF file:', pdfFile.name, 'Size:', pdfFile.size, 'bytes')
-      // Convert File to Blob with proper metadata for serverless compatibility
-      const pdfBuffer = await pdfFile.arrayBuffer()
-      const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' })
-      webhookFormData.append('pdf', pdfBlob, pdfFile.name)
-      console.log('PDF converted to Blob successfully')
+      console.log('Uploading PDF file:', pdfFile.name, 'Size:', pdfFile.size, 'bytes')
+
+      try {
+        const blob = await put(pdfFile.name, pdfFile, {
+          access: 'public',
+          addRandomSuffix: true,
+        })
+        pdfUrl = blob.url
+        console.log('PDF uploaded to Blob:', pdfUrl)
+      } catch (uploadError) {
+        console.error('Error uploading PDF to Blob:', uploadError)
+        return {
+          error: 'Failed to upload PDF',
+          response: null,
+        }
+      }
     }
 
-    // Forward the request to n8n PDF webhook
-    console.log('Sending request to webhook:', PDF_WEBHOOK_URL)
+    // Send message and PDF URL to n8n webhook (not the actual file)
+    const webhookPayload = {
+      message,
+      sessionId,
+      pdfUrl: pdfUrl || null,
+    }
+
+    // Forward the request to n8n webhook with JSON payload
+    console.log('Sending request to webhook:', PDF_WEBHOOK_URL, webhookPayload)
     const n8nResponse = await fetch(PDF_WEBHOOK_URL, {
       method: 'POST',
-      body: webhookFormData,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(webhookPayload),
     })
 
     if (!n8nResponse.ok) {
