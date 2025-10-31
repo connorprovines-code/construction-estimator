@@ -76,6 +76,9 @@ export default function Home() {
           const blob = await upload(selectedPDF.name, selectedPDF, {
             access: 'public',
             handleUploadUrl: '/api/upload',
+            options: {
+              allowOverwrite: true,
+            },
           })
           pdfUrl = blob.url
           console.log('PDF uploaded to Blob:', pdfUrl)
