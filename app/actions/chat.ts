@@ -1,5 +1,7 @@
 'use server'
 
+import { v4 as uuidv4 } from 'uuid'
+
 const PDF_WEBHOOK_URL = 'https://connorprovines.app.n8n.cloud/webhook/construction-estimator-pdf'
 
 export async function sendChatMessage(formData: FormData) {
@@ -12,62 +14,50 @@ export async function sendChatMessage(formData: FormData) {
     if (!message || typeof message !== 'string') {
       return {
         error: 'Message is required and must be a string',
-        response: null,
+        jobId: null,
       }
     }
 
     if (!sessionId || typeof sessionId !== 'string') {
       return {
         error: 'Session ID is required and must be a string',
-        response: null,
+        jobId: null,
       }
     }
+
+    // Generate unique job ID
+    const jobId = uuidv4()
+
+    // Get the callback URL (use VERCEL_URL in production)
+    const callbackUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}/api/webhook-callback`
+      : 'http://localhost:3000/api/webhook-callback'
 
     // Send message and PDF URL to n8n webhook (PDF already uploaded to Blob by client)
     const webhookPayload = {
       message,
       sessionId,
       pdfUrl: pdfUrl || null,
+      jobId,
+      callbackUrl,
     }
 
-    // Forward the request to n8n webhook with JSON payload
+    // Forward the request to n8n webhook with JSON payload (fire and forget)
     console.log('Sending request to webhook:', PDF_WEBHOOK_URL, webhookPayload)
-    const n8nResponse = await fetch(PDF_WEBHOOK_URL, {
+    fetch(PDF_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(webhookPayload),
+    }).catch(error => {
+      console.error('Error sending to n8n:', error)
     })
 
-    if (!n8nResponse.ok) {
-      const errorText = await n8nResponse.text()
-      console.error('n8n webhook returned error:', n8nResponse.status, errorText)
-      return {
-        error: `Failed to process message: ${n8nResponse.status}`,
-        details: errorText,
-        response: null,
-      }
-    }
-
-    // Try to parse JSON response
-    let n8nData
-    try {
-      const responseText = await n8nResponse.text()
-      console.log('n8n response:', responseText)
-      n8nData = JSON.parse(responseText)
-    } catch (parseError) {
-      console.error('Failed to parse n8n response:', parseError)
-      return {
-        error: 'Invalid response from webhook',
-        response: null,
-      }
-    }
-
-    // Return the response from n8n
+    // Return immediately with jobId
     return {
       error: null,
-      response: n8nData.response || n8nData.message || n8nData.output || 'No response from assistant',
+      jobId,
     }
   } catch (error) {
     console.error('Error in chat action:', error)
@@ -75,7 +65,7 @@ export async function sendChatMessage(formData: FormData) {
     console.error('Error details:', errorMessage)
     return {
       error: `Internal server error: ${errorMessage}`,
-      response: null,
+      jobId: null,
     }
   }
 }

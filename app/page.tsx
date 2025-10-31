@@ -99,10 +99,57 @@ export default function Home() {
         throw new Error(data.error)
       }
 
-      // Add assistant response to chat
-      if (data.response) {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
+      if (!data.jobId) {
+        throw new Error('No job ID returned')
       }
+
+      // Add "Processing..." message
+      const processingMessageIndex = messages.length + 1
+      setMessages(prev => [...prev, { role: 'assistant', content: '⏳ Processing your request...' }])
+
+      // Poll for results
+      const pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/results/${data.jobId}`)
+          const result = await response.json()
+
+          if (result.status === 'completed') {
+            clearInterval(pollInterval)
+            // Update the processing message with actual response
+            setMessages(prev => {
+              const updated = [...prev]
+              updated[processingMessageIndex] = {
+                role: 'assistant',
+                content: result.response || 'Processing completed'
+              }
+              return updated
+            })
+            setIsLoading(false)
+          } else if (result.status === 'error') {
+            clearInterval(pollInterval)
+            setMessages(prev => {
+              const updated = [...prev]
+              updated[processingMessageIndex] = {
+                role: 'assistant',
+                content: `Error: ${result.error || 'Processing failed'}`
+              }
+              return updated
+            })
+            setIsLoading(false)
+          }
+          // If status is 'processing', continue polling
+        } catch (pollError) {
+          console.error('Error polling for results:', pollError)
+          clearInterval(pollInterval)
+          setIsLoading(false)
+        }
+      }, 3000) // Poll every 3 seconds
+
+      // Timeout after 10 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval)
+        setIsLoading(false)
+      }, 10 * 60 * 1000)
     } catch (error) {
       console.error('Error sending message:', error)
       setMessages(prev => [
