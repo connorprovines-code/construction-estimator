@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const PDF_WEBHOOK_URL = 'https://connorprovines.app.n8n.cloud/webhook/construction-estimator-pdf'
 
-// Configure route to handle larger file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
-
-// Increase max duration for serverless function (Vercel Pro: up to 60s, Hobby: 10s)
+// Increase max duration for serverless function (Vercel Pro: up to 60s)
 export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
